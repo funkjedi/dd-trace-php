@@ -13,17 +13,14 @@ use DDTrace\Tracer;
 use DDTrace\Types;
 use DDTrace\Transport\Http;
 use Illuminate\Foundation\Http\Events\RequestHandled;
-use Illuminate\Pipeline\Pipeline;
-use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\View\Engines\CompilerEngine;
 use OpenTracing\GlobalTracer;
 
 use function DDTrace\Time\fromMicrotime;
 
 /**
- * DataDog Laravel tracing provider. Use by installing the dd-trace library:
+ * DataDog Laravel 4.2 tracing provider. Use by installing the dd-trace library:
  *
  * composer require datadog/dd-trace
  *
@@ -32,12 +29,13 @@ use function DDTrace\Time\fromMicrotime;
  *     'providers' => array_merge(include(base_path('modules/system/providers.php')), [
  *        // 'Illuminate\Html\HtmlServiceProvider', // Example
  *
- *        'DDTrace\Integrations\LaravelProvider',
+ *        'DDTrace\Integrations\Laravel\V4\LaravelProvider',
  *        'System\ServiceProvider',
  *   ]),
  */
 class LaravelProvider extends ServiceProvider
 {
+    /** @inheritdoc */
     public function register()
     {
         if (!extension_loaded('ddtrace')) {
@@ -56,6 +54,12 @@ class LaravelProvider extends ServiceProvider
         // container for easy Laravel-specific use.
         GlobalTracer::set($tracer);
         $this->app->instance(Tracer::class, $tracer);
+    }
+
+    /** @inheritdoc */
+    public function boot()
+    {
+        $tracer = GlobalTracer::get();
 
         dd_trace('Illuminate\Routing\Route', 'run', function() {
             $scope = LaravelProvider::buildBaseScope('laravel.action', $this->uri);
@@ -101,63 +105,6 @@ class LaravelProvider extends ServiceProvider
             }
         });
 
-//
-//        // Trace middleware
-//        dd_trace(Pipeline::class, 'through', function ($pipes) {
-//
-//            // Pipes can be passed both as an array and as multiple arguments
-//            // https://github.com/laravel/framework/blob/621d91d802016ab4a64acc5c65f81cb9f5e5f779/src/Illuminate/Pipeline/Pipeline.php#L74
-//            $pipes = is_array($pipes) ? $pipes : func_get_args();
-//
-//            foreach ($pipes as $pipe) {
-//                // Pipes can be passed both as class to the pipeline and as instances
-//                if (is_string($pipe) || is_object($pipe)) {
-//                    if (is_string($pipe)) {
-//                        // Middleware can be passed parameters during registration, in the form
-//                        // 'middleware_name_or_class:param1,param2', so we need to extract the real name/class from the
-//                        // pipeline
-//                        // See: https://laravel.com/docs/5.7/middleware#middleware-parameters
-//                        $class = explode(':', $pipe)[0];
-//                    } else {
-//                        // If an instance is passed instead of the class, than we need to know the class from it.
-//                        $class = get_class($pipe);
-//                    }
-//
-//                    dd_trace($class, 'handle', function () {
-//                        $args = func_get_args();
-//                        $scope = GlobalTracer::get()->startActiveSpan('laravel.middleware');
-//                        $span = $scope->getSpan();
-//                        $span->setResource(get_class($this));
-//
-//                        try {
-//                            return call_user_func_array([$this, 'handle'], $args);
-//                        } catch (\Exception $e) {
-//                            $span->setError($e);
-//                            throw $e;
-//                        } finally {
-//                            $scope->close();
-//                        }
-//                    });
-//                }
-//            }
-//            return $this->through($pipes);
-//        });
-//
-//        // Create a trace span for every template rendered
-//        // public function get($path, array $data = array())
-//        dd_trace(CompilerEngine::class, 'get', function ($path, $data = array()) {
-//            $scope = GlobalTracer::get()->startActiveSpan('laravel.view');
-//
-//            try {
-//                return $this->get($path, $data);
-//            } catch (\Exception $e) {
-//                $scope->getSpan()->setError($e);
-//                throw $e;
-//            } finally {
-//                $scope->close();
-//            }
-//        });
-
         // Create a span that starts from when Laravel first boots (public/index.php)
         $scope = $tracer->startActiveSpan('laravel.request', ['start_time' => fromMicrotime(LARAVEL_START)]);
         $scope->getSpan()->setTag(Tags\SERVICE_NAME, $this->getAppName());
@@ -194,9 +141,9 @@ class LaravelProvider extends ServiceProvider
 
         PDOIntegration::load();
 
-//        if (class_exists('Predis\Client')) {
-//            PredisIntegration::load();
-//        }
+        if (class_exists('Predis\Client')) {
+            PredisIntegration::load();
+        }
 
         // Flushes traces to agent.
         register_shutdown_function(function () use ($scope) {
@@ -205,17 +152,29 @@ class LaravelProvider extends ServiceProvider
         });
     }
 
+    /**
+     * Starts a basic scope object with the common info required by all the resources.
+     *
+     * @param string $operation
+     * @param string $resource
+     * @return \OpenTracing\Scope
+     */
     public static function buildBaseScope($operation, $resource)
     {
         $scope = GlobalTracer::get()->startActiveSpan($operation);
         $span = $scope->getSpan();
         $span->setTag(Tags\SPAN_TYPE, Types\WEB_SERVLET);
-        $span->setTag(Tags\SERVICE_NAME, 'laravel');
+        $span->setTag(Tags\SERVICE_NAME, self::getAppName());
         $span->setResource($resource);
         return $scope;
     }
 
-    private function getAppName()
+    /**
+     * Returns the configurable app name.
+     *
+     * @return array|false|\Illuminate\Config\Repository|mixed|null|string
+     */
+    private static function getAppName()
     {
         $name = null;
 

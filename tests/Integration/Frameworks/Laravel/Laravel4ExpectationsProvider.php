@@ -23,7 +23,6 @@ class Laravel4ExpectationsProvider implements ExpectationProvider
                         'http.url' => 'http://localhost/simple',
                     ]),
                 SpanAssertion::exists('laravel.event.handle'),
-                SpanAssertion::exists('laravel.event.handle'),
                 SpanAssertion::build('laravel.action', 'laravel', 'web', 'simple'),
             ],
             'A simple GET request with a view' => [
