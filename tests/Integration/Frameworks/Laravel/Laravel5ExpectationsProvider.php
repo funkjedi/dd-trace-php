@@ -14,7 +14,7 @@ class Laravel5ExpectationsProvider implements ExpectationProvider
     public function provide()
     {
         return [
-            'A simple GET request' => [],
+            'A simple GET request returning a string' => [],
             'A simple GET request with a view' => [
                 SpanAssertion::exists('laravel.view'),
             ],

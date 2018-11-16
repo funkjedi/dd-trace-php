@@ -12,12 +12,12 @@ use DDTrace\Tags;
 use DDTrace\Tracer;
 use DDTrace\Types;
 use DDTrace\Transport\Http;
-use Illuminate\Foundation\Http\Events\RequestHandled;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use OpenTracing\GlobalTracer;
 
 use function DDTrace\Time\fromMicrotime;
+
 
 /**
  * DataDog Laravel 4.2 tracing provider. Use by installing the dd-trace library:
@@ -119,18 +119,8 @@ class LaravelProvider extends ServiceProvider
             $span->setResource($route->getActionName() . ' ' . Route::currentRouteName());
             $span->setTag('laravel.route.name', $route->getName());
             $span->setTag('laravel.route.action', $route->getActionName());
-            $span->setTag('http.method', $request->method());
-            $span->setTag('http.url', $request->url());
-        });
-
-        $this->app['events']->listen(RequestHandled::class, function (RequestHandled $event) use ($scope) {
-            $span = $scope->getSpan();
-            $span->setTag('http.status_code', $event->response->status());
-            try {
-                $user = auth()->user()->id;
-                $span->setTag('laravel.user', strlen($user) ? $user : '-');
-            } catch (\Exception $e) {
-            }
+            $span->setTag(Tags\HTTP_METHOD, $request->method());
+            $span->setTag(Tags\HTTP_URL, $request->url());
         });
 
         // Enable extension integrations
