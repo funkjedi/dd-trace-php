@@ -101,23 +101,6 @@ class LaravelProvider extends ServiceProvider
             }
         });
 
-        dd_trace('Illuminate\Routing\ControllerDispatcher', 'callFilter', function() {
-            $args = func_get_args();
-            $scope = LaravelProvider::buildBaseScope('laravel.controller.filter.handle', $args[0]);
-            $span = $scope->getSpan();
-
-            try {
-                return call_user_func_array([$this, 'callFilter'], $args);
-            } catch (\Exception $e) {
-                $span->setError($e);
-                throw $e;
-            } finally {
-                $scope->close();
-            }
-        });
-
-
-
 //
 //        // Trace middleware
 //        dd_trace(Pipeline::class, 'through', function ($pipes) {
@@ -180,25 +163,28 @@ class LaravelProvider extends ServiceProvider
         $scope->getSpan()->setTag(Tags\SERVICE_NAME, $this->getAppName());
         $scope->getSpan()->setTag(Tags\SPAN_TYPE, Types\WEB_SERVLET);
 
-//        // Name the scope when the route matches
-//        $this->app['events']->listen(RouteMatched::class, function (RouteMatched $event) use ($scope) {
-//            $span = $scope->getSpan();
-//            $span->setResource($event->route->getActionName() . ' ' . Route::currentRouteName());
-//            $span->setTag('laravel.route.name', Route::currentRouteName());
-//            $span->setTag('laravel.route.action', $event->route->getActionName());
-//            $span->setTag('http.method', $event->request->method());
-//            $span->setTag('http.url', $event->request->url());
-//        });
-//
-//        $this->app['events']->listen(RequestHandled::class, function (RequestHandled $event) use ($scope) {
-//            $span = $scope->getSpan();
-//            $span->setTag('http.status_code', $event->response->status());
-//            try {
-//                $user = auth()->user()->id;
-//                $span->setTag('laravel.user', strlen($user) ? $user : '-');
-//            } catch (\Exception $e) {
-//            }
-//        });
+        // Name the scope when the route matches
+        $this->app['events']->listen('router.matched', function () use ($scope) {
+            $args = func_get_args();
+            list($route, $request) = $args;
+            $span = $scope->getSpan();
+
+            $span->setResource($route->getActionName() . ' ' . Route::currentRouteName());
+            $span->setTag('laravel.route.name', $route->getName());
+            $span->setTag('laravel.route.action', $route->getActionName());
+            $span->setTag('http.method', $request->method());
+            $span->setTag('http.url', $request->url());
+        });
+
+        $this->app['events']->listen(RequestHandled::class, function (RequestHandled $event) use ($scope) {
+            $span = $scope->getSpan();
+            $span->setTag('http.status_code', $event->response->status());
+            try {
+                $user = auth()->user()->id;
+                $span->setTag('laravel.user', strlen($user) ? $user : '-');
+            } catch (\Exception $e) {
+            }
+        });
 
         // Enable extension integrations
         EloquentIntegration::load();

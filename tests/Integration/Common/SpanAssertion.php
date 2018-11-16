@@ -32,12 +32,14 @@ final class SpanAssertion
 
     /**
      * @param string $name
+     * @param null $resource
      * @param bool $error
      * @return SpanAssertion
      */
-    public static function exists($name, $error = false)
+    public static function exists($name, $resource = null, $error = false)
     {
-        return SpanAssertion::forOperation($name, $error, true);
+        return SpanAssertion::forOperation($name, $error, true)
+            ->resource($resource);
     }
 
     /**

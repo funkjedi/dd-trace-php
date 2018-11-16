@@ -119,9 +119,7 @@ final class Tracer implements OpenTracingTracer
         );
 
         $tags = $options->getTags() + $this->config['global_tags'];
-        error_log("Name" . $operationName);
         if ($reference === null) {
-        error_log("is null");
             $tags[Tags\PID] = getmypid();
         }
 
