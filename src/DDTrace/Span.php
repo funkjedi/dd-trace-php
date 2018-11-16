@@ -365,4 +365,11 @@ final class Span implements OpenTracingSpan
     {
         return $this->context->getBaggageItem($key);
     }
+
+    /** @inheritdoc */
+    public function __toString()
+    {
+        $operation = $this->operationName;
+        return "[Span op:'$operation']";
+    }
 }
