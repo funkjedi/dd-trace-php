@@ -86,6 +86,38 @@ class LaravelProvider extends ServiceProvider
             }
         });
 
+        dd_trace('Illuminate\Events\Dispatcher', 'fire', function() {
+            $args = func_get_args();
+            $scope = LaravelProvider::buildBaseScope('laravel.event.handle', $args[0]);
+            $span = $scope->getSpan();
+
+            try {
+                return call_user_func_array([$this, 'fire'], $args);
+            } catch (\Exception $e) {
+                $span->setError($e);
+                throw $e;
+            } finally {
+                $scope->close();
+            }
+        });
+
+        dd_trace('Illuminate\Routing\ControllerDispatcher', 'callFilter', function() {
+            $args = func_get_args();
+            $scope = LaravelProvider::buildBaseScope('laravel.controller.filter.handle', $args[0]);
+            $span = $scope->getSpan();
+
+            try {
+                return call_user_func_array([$this, 'callFilter'], $args);
+            } catch (\Exception $e) {
+                $span->setError($e);
+                throw $e;
+            } finally {
+                $scope->close();
+            }
+        });
+
+
+
 //
 //        // Trace middleware
 //        dd_trace(Pipeline::class, 'through', function ($pipes) {
@@ -148,25 +180,25 @@ class LaravelProvider extends ServiceProvider
         $scope->getSpan()->setTag(Tags\SERVICE_NAME, $this->getAppName());
         $scope->getSpan()->setTag(Tags\SPAN_TYPE, Types\WEB_SERVLET);
 
-        // Name the scope when the route matches
-        $this->app['events']->listen(RouteMatched::class, function (RouteMatched $event) use ($scope) {
-            $span = $scope->getSpan();
-            $span->setResource($event->route->getActionName() . ' ' . Route::currentRouteName());
-            $span->setTag('laravel.route.name', Route::currentRouteName());
-            $span->setTag('laravel.route.action', $event->route->getActionName());
-            $span->setTag('http.method', $event->request->method());
-            $span->setTag('http.url', $event->request->url());
-        });
-
-        $this->app['events']->listen(RequestHandled::class, function (RequestHandled $event) use ($scope) {
-            $span = $scope->getSpan();
-            $span->setTag('http.status_code', $event->response->status());
-            try {
-                $user = auth()->user()->id;
-                $span->setTag('laravel.user', strlen($user) ? $user : '-');
-            } catch (\Exception $e) {
-            }
-        });
+//        // Name the scope when the route matches
+//        $this->app['events']->listen(RouteMatched::class, function (RouteMatched $event) use ($scope) {
+//            $span = $scope->getSpan();
+//            $span->setResource($event->route->getActionName() . ' ' . Route::currentRouteName());
+//            $span->setTag('laravel.route.name', Route::currentRouteName());
+//            $span->setTag('laravel.route.action', $event->route->getActionName());
+//            $span->setTag('http.method', $event->request->method());
+//            $span->setTag('http.url', $event->request->url());
+//        });
+//
+//        $this->app['events']->listen(RequestHandled::class, function (RequestHandled $event) use ($scope) {
+//            $span = $scope->getSpan();
+//            $span->setTag('http.status_code', $event->response->status());
+//            try {
+//                $user = auth()->user()->id;
+//                $span->setTag('laravel.user', strlen($user) ? $user : '-');
+//            } catch (\Exception $e) {
+//            }
+//        });
 
         // Enable extension integrations
         EloquentIntegration::load();
@@ -201,8 +233,8 @@ class LaravelProvider extends ServiceProvider
     {
         $name = null;
 
-        if (isset($_ENV['ddtrace_app_name'])) {
-            $name = $_ENV['ddtrace_app_name'];
+        if (getenv('ddtrace_app_name')) {
+            $name = getenv('ddtrace_app_name');
         } elseif (is_callable('config')) {
             $name = config('app.name');
         }

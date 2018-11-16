@@ -15,9 +15,11 @@ class Laravel4ExpectationsProvider implements ExpectationProvider
     {
         return [
             'A simple GET request' => [
+                SpanAssertion::exists('laravel.request'),
                 SpanAssertion::build('laravel.action', 'laravel', 'web', 'simple'),
             ],
             'A simple GET request with a view' => [
+                SpanAssertion::exists('laravel.request'),
                 SpanAssertion::exists('laravel.action'),
                 SpanAssertion::build('laravel.view.render', 'laravel', 'web', 'simple_view'),
             ],

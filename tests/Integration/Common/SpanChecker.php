@@ -88,7 +88,7 @@ final class SpanChecker
                 $filtered,
                 $namePrefix . "Wrong value for 'tags'"
             );
-            foreach ($exp->getExistingTagNames() as $tagName) {
+            foreach ($exp->getExistingTagNames($span->getParentId() !== null) as $tagName) {
                 $this->testCase->assertArrayHasKey($tagName, $span->getAllTags());
             }
         }

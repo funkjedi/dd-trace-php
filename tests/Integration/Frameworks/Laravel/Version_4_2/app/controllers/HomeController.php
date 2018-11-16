@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Routing\Controller;
+
 class HomeController extends Controller {
 
 	/*

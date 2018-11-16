@@ -23,7 +23,7 @@ class CommonSpecsTest extends TestCase
      */
     public function testSpecs(RequestSpec $spec, array $spanExpectations)
     {
-        $traces = $this->isolateTracer(function() use ($spec) {
+        $traces = $this->simulateWebRequestTracer(function() use ($spec) {
             if ($spec instanceof GetSpec) {
             $response = $this->call('GET', $spec->getPath());
                 $this->assertSame($spec->getStatusCode(), $response->getStatusCode());
@@ -31,6 +31,7 @@ class CommonSpecsTest extends TestCase
                 $this->fail('Unhandled request spec type');
             }
         });
+
         $this->assertExpectedSpans($this, $traces, $spanExpectations);
     }
 

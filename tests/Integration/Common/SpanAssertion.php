@@ -156,10 +156,16 @@ final class SpanAssertion
     }
 
     /**
+     * @param bool $isChildSpan
      * @return string[]
      */
-    public function getExistingTagNames()
+    public function getExistingTagNames($isChildSpan = false)
     {
+        if ($isChildSpan) {
+            return array_filter($this->existingTags, function ($name) {
+                return $name !== 'system.pid';
+            });
+        }
         return $this->existingTags;
     }
 
