@@ -32,6 +32,10 @@ jobs:
           command: echo 1
       - run:
           command: echo 2
+      - - run:
+            command: echo 3
+        - run:
+            command: echo 4
 
 workflows:
   version: 2
