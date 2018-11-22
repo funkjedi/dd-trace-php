@@ -25,6 +25,7 @@ version: 2.0
 jobs:
 
   sample_1:
+    machine:
     steps:
       - run:
           command: echo 1
