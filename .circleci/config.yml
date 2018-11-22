@@ -25,7 +25,8 @@ version: 2.0
 jobs:
 
   sample_1:
-    machine:
+    docker:
+      - image: circleci/php:7-cli-node-browsers
     steps:
       - run:
           command: echo 1
